@@ -37,27 +37,12 @@ class Comment(models.Model):
     created = models.DateTimeField(
         'Дата добавления', auto_now_add=True, db_index=True)
 
+    def __str__(self):
+        return self.text
+
 
 class Follow(models.Model):
     user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='user',
-        verbose_name='Подписчик',
-        help_text='Пользователь подписчик'
-    )
+        User, on_delete=models.CASCADE, related_name='user')
     following = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='following',
-        verbose_name='Автор',
-        help_text='Подписка на автора'
-    )
-
-    def __str__(self):
-        return self.following.username
-
-    class Meta:
-        ordering = ('-following',)
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
+        User, on_delete=models.CASCADE, related_name='following')

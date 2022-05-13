@@ -1,20 +1,25 @@
 from django.shortcuts import get_object_or_404
-from posts.models import Group, Post, Follow, Comment, User
-from rest_framework import viewsets, permissions
+from posts.models import Follow, Group, Post, User
+from rest_framework import filters, permissions, viewsets
+from rest_framework.exceptions import ParseError
+from rest_framework.pagination import LimitOffsetPagination
 
 from .permissions import AllButAuthorReadOnly
-from .serializers import (CommentSerializer, GroupSerializer, PostSerializer,
-                          FollowSerializer)
+from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
+                          PostSerializer)
 
 
 class PostViewSet(viewsets.ModelViewSet):
     permission_classes = (AllButAuthorReadOnly,)
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    pagination_class = LimitOffsetPagination
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user,
-                        group=self.kwargs.get('group'))
+                        group=Group.objects.filter(
+                            id=self.request.data.get("group")).first()
+                        )
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
@@ -42,10 +47,29 @@ class CommentsViewSet(viewsets.ModelViewSet):
 class FollowViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = FollowSerializer
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('following__username',)
+    pagination_class = LimitOffsetPagination
 
     def get_queryset(self):
         return Follow.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        following = get_object_or_404(User, username=self.kwargs.get('following'))
+
+        following_name = self.request.data.get("following", None)
+
+        if following_name is None:
+            raise ParseError(detail='following - Обязательное поле.', code=400)
+
+        following = get_object_or_404(User, username=following_name)
+
+        if self.request.user == following:
+            raise ParseError(detail='Невозможно подписаться на себя.',
+                             code=400)
+
+        if Follow.objects.filter(user=self.request.user,
+                                 following=following).exists():
+            raise ParseError(detail='Уже пподписан.', code=400)
+
+        serializer.is_valid(raise_exception=True)
         serializer.save(user=self.request.user, following=following)

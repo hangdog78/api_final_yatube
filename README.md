@@ -2,6 +2,8 @@
 
 - OpenAPI к блогам проекта YaTube. 
 - Для авторизации используются JWT токены.
+- После старта проекта документация по API доступна по адресу: http://127.0.0.1:8000/redoc/
+
 
 
 ### Как развернуть проект:
@@ -48,4 +50,42 @@ python3 manage.py migrate
 python3 manage.py runserver
 ```
 
-###Примеры запросов к API.
+### Примеры запросов к API.
+
+>Получение JWT токена:
+
+```
+POST запрос:
+http://127.0.0.1:8000/api/v1/jwt/create/
+
+Content type: application/json
+{
+"username": "string",
+"password": "string"
+}
+```
+
+>Получение пагинированного списка постов:
+
+```
+GET запрос:
+http://127.0.0.1:8000/api/v1/posts/?offset=3&limit=10
+
+Параметры:
+
+offset: выбранная страница,
+limit: количество постов на странице
+
+```
+>Создание публикации
+```
+POST запрос:
+http://127.0.0.1:8000/api/v1/jwt/create/
+
+Content type: application/json
+{
+"text": "string",
+"image": "string",
+"group": 0
+}
+```

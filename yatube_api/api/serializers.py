@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from posts.models import Comment, Follow, Group, Post, User
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField, SlugRelatedField
+from rest_framework.validators import UniqueTogetherValidator
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -32,21 +33,25 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class FollowSerializer(serializers.ModelSerializer):
     user = SlugRelatedField(read_only=True,
-                            slug_field='username')
-    following = SlugRelatedField(read_only=True,
-                                 slug_field='username')
+                            slug_field='username',
+                            default=serializers.CurrentUserDefault())
+    following = SlugRelatedField(slug_field='username',
+                                 queryset=User.objects.all())
 
     class Meta:
         fields = ('user', 'following')
         model = Follow
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=("user", "following"),
+                message='Уже есть подписка'
+            )
+        ]
 
     def validate(self, data):
         user = self.context['request'].user
         following_name = self.context['request'].data.get('following')
-
-        if following_name is None:
-            raise serializers.ValidationError('following - Обязательное поле.',
-                                              code=400)
 
         following = get_object_or_404(User, username=following_name)
 
@@ -54,9 +59,6 @@ class FollowSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Невозможно подписаться на себя.',
                 code=400)
-
-        if Follow.objects.filter(user=user, following=following).exists():
-            raise serializers.ValidationError('Уже подписан.', code=400)
 
         data['user'] = user
         data['following'] = following
